@@ -55,8 +55,8 @@ body.lefty #bHook{right:auto;left:max(22px,env(safe-area-inset-left))}body.lefty
 <p>Ajude o Molusco a coletar as <b>10 fichas brilhantes</b> nos telhados o mais rápido possível!<br>
 Joystick para correr, arraste do outro lado para girar a câmera. Segure <b>Gancho</b> para disparar o cabo e balançar; solte para se lançar (com mortal!). Corra contra uma parede para escalar; <b>Pular</b> na parede salta dela; toque duas vezes em <b>Pular</b> no ar para dar um mortal.<br><small>Teclado: WASD, Espaço = Pular, Shift/E = Gancho, R = Reiniciar, setas = câmera</small></p>
 <button id="start" disabled>Carregando…</button>
-<p class="cred">Personagem: rig e animações “Universal Animation Library” de Quaternius (CC0); roupa, rosto e cabelo procedurais. Motor: three.js (MIT). Tudo o mais gerado por código.</p></div>
-<div class="screen hidden" id="win"><h1>VOCÊ VENCEU!<span id="winT"></span></h1><p>O Molusco coletou todas as fichas da cidade.</p><button id="again">Jogar de novo</button><p class="cred">Animações e rig: Quaternius (CC0) · three.js (MIT)</p></div>
+<p class="cred">Personagem: modelo “Ultimate Modular Men – Casual Hoodie” (Quaternius, CC0, recolorido) animado por retarget das “Universal Animation Library 1 e 2” (Quaternius, CC0). Motor: three.js (MIT). Tudo o mais gerado por código.</p></div>
+<div class="screen hidden" id="win"><h1>VOCÊ VENCEU!<span id="winT"></span></h1><p>O Molusco coletou todas as fichas da cidade.</p><button id="again">Jogar de novo</button><p class="cred">Modelo e animações: Quaternius (CC0) · three.js (MIT)</p></div>
 <div class="screen hidden" id="cfg"><h2>Ajustes</h2>
 <div class="row"><span>Qualidade</span><button class="opt" data-k="q" data-v="0">Baixo</button><button class="opt" data-k="q" data-v="1">Médio</button><button class="opt" data-k="q" data-v="2">Ultra</button></div>
 <div class="row"><span>Ajuste automático</span><button class="opt" data-k="auto" data-v="1">Ligado</button><button class="opt" data-k="auto" data-v="0">Desligado</button></div>
@@ -515,21 +515,7 @@ loader.load('molusco.glb',g=>{
  model=g.scene;
  model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=false;o.frustumCulled=false;o.material=/Joints/.test(o.material.name)?jointMat2:outfit}});
  for(const k in BN)bones[k]=model.getObjectByName(BN[k]);
- // hair
- const hair=buildHair();hair.castShadow=true;attachAt(bones.Head,hair);
- // ears
- for(const s of[-1,1]){const e=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),new THREE.MeshStandardMaterial({color:0xc48a6c,roughness:.6}));e.scale.set(.5,1,.8);e.position.set(s*.112,1.67,-.005);attachAt(bones.Head,e)}
- // hood (black outside, red lining) on a spring pivot
- hoodPivot=new THREE.Group();hoodPivot.position.set(0,1.47,-.085);
- const hg=new THREE.SphereGeometry(.15,18,12,Math.PI*.15,Math.PI*1.7,0,Math.PI*.62);hg.rotateY(Math.PI);hg.rotateX(-1.25);hg.scale(.95,.7,.75);hg.translate(0,-.05,-.06);
- const h1=new THREE.Mesh(hg,hoodOut),h2=new THREE.Mesh(hg,hoodIn);h1.castShadow=true;hoodPivot.add(h1,h2);attachAt(bones.Spine2,hoodPivot);
- // drawstrings
- for(const s of[-1,1]){const p=new THREE.Group();p.position.set(s*.045,1.43,.095);const m=new THREE.Mesh(new THREE.CylinderGeometry(.005,.005,.17,5),new THREE.MeshStandardMaterial({color:0xeeeeee,roughness:.6}));m.position.y=-.085;const tip=new THREE.Mesh(new THREE.CylinderGeometry(.008,.008,.025,6),devMat);tip.position.y=-.17;p.add(m,tip);attachAt(bones.Spine2,p);strings.push({p,a:0,v:0,b:0,vb:0})}
- // backpack
- {const bp=new THREE.Group();const bag=new THREE.Mesh(new RoundedBox(.26,.32,.1),hoodOut);const strap=new THREE.Mesh(new THREE.BoxGeometry(.27,.03,.105),hoodIn.clone());strap.material.side=THREE.FrontSide;strap.position.y=.06;bp.add(bag,strap);bp.position.set(0,1.2,-.16);bag.castShadow=true;attachAt(bones.Spine2,bp)}
- // wrist grapple device (right forearm)
- wristDev=new THREE.Group();const dv=new THREE.Mesh(new THREE.BoxGeometry(.09,.055,.075),devMat);const led=new THREE.Mesh(new THREE.BoxGeometry(.02,.012,.04),ledMat);led.position.set(0,.032,0);const noz=new THREE.Mesh(new THREE.CylinderGeometry(.012,.015,.05,8),devMat);noz.rotation.z=Math.PI/2;noz.position.set(-.06,0,0);
- wristDev.add(dv,led,noz);wristDev.position.set(-.64,1.47,-.065);attachAt(bones.RightForeArm,wristDev);
+ model.traverse(o=>{if(o.isMesh)o.visible=false});
  model.position.y=-.92;spinG.add(model);
  mixer=new THREE.AnimationMixer(model);
  const hipRest=bones.Hips.position.clone();
@@ -543,7 +529,7 @@ loader.load('molusco.glb',g=>{
     else if(k==='roll'){const x0=v[0],z0=v[2];for(let i=0;i<v.length;i+=3){v[i]=x0;v[i+2]=z0}}
     else{for(let i=0;i<v.length;i+=3){v[i]=hipRest.x;v[i+2]=hipRest.z}}}
    const a=mixer.clipAction(c);a.play();a.setEffectiveWeight(k==='idle'?1:0);if(['jumpStart','land','landS','roll','climbUp'].includes(k)){a.setLoop(THREE.LoopOnce);a.clampWhenFinished=true}acts[k]=a}
-  window.__modelLoaded=true;$('start').disabled=false;$('start').textContent='Toque para começar';
+  loadBody();
  },undefined,e=>{$('start').textContent='Erro ao carregar animações';console.error(e)});
 
 },undefined,e=>{$('start').textContent='Erro ao carregar o modelo';console.error(e)});
@@ -564,6 +550,36 @@ let tokens=[];
 function placeTokens(){tokens.forEach(t=>scene.remove(t.m));tokens=[];
  const rs=[...roofs].sort((a,b)=>((a.cx*7+a.cz*13)%5+5)%5-((b.cx*7+b.cz*13)%5+5)%5).slice(0,10);
  rs.forEach(b=>{const g=new THREE.Group();const o=new THREE.Mesh(tokG,tokM),r=new THREE.Mesh(ringG,tokM);g.add(o,r);g.position.set(b.tok[0],b.tok[1],b.tok[2]);scene.add(g);tokens.push({m:g,o,r,got:false,base:b.tok[1]})})}
+
+// ---------- Visible body: Quaternius "Ultimate Modular Men" Casual_Hoodie (CC0), recolored to the Molusco outfit,
+// driven every frame by the UAL skeleton (runtime retarget: bind-relative rotation + limb direction matching)
+let tgt=null;const tb={},srcBindInv={},tgtBind={},tgtBindP={},srcBindP={};
+const RTMAP=[['pelvis','Hips'],['spine_01','Abdomen'],['spine_02','Torso'],['spine_03','Chest'],['neck_01','Neck'],['Head','Head'],['clavicle_l','ShoulderL'],['upperarm_l','UpperArmL'],['lowerarm_l','LowerArmL'],['hand_l','WristL'],['clavicle_r','ShoulderR'],['upperarm_r','UpperArmR'],['lowerarm_r','LowerArmR'],['hand_r','WristR'],['thigh_l','UpperLegL'],['calf_l','LowerLegL'],['foot_l','FootL'],['thigh_r','UpperLegR'],['calf_r','LowerLegR'],['foot_r','FootR']];
+const AIMCH={upperarm_l:'lowerarm_l',lowerarm_l:'hand_l',upperarm_r:'lowerarm_r',lowerarm_r:'hand_r',thigh_l:'calf_l',calf_l:'foot_l',thigh_r:'calf_r',calf_r:'foot_r'};
+const srcB={};
+function bindPose(root){root.updateMatrixWorld(true);const out={};const m=new THREE.Matrix4(),mi=new THREE.Matrix4();root.traverse(o=>{if(o.isSkinnedMesh){const sk=o.skeleton;sk.bones.forEach((b,i)=>{if(out[b.name])return;mi.copy(sk.boneInverses[i]).invert();m.copy(o.bindMatrix).multiply(mi);const p=V3(),q=new THREE.Quaternion(),sc=V3();m.decompose(p,q,sc);out[b.name]={q,p}})}});return out}
+const BODY_COL={Purple:0x0f0f12,White:0x9e0b19,LightBlue:0x19191d,Hair:0x0a0a0c};
+function loadBody(){loader.load('molusco_body.glb',g=>{
+ tgt=g.scene;
+ const sb=bindPose(model);
+ for(const [k,v] of Object.entries(sb)){srcBindInv[k]=v.q.clone().invert();srcBindP[k]=v.p}
+ const tbp=bindPose(tgt);for(const [k,v] of Object.entries(tbp)){tgtBind[k]=v.q;tgtBindP[k]=v.p}
+ for(const [s,t] of RTMAP){srcB[s]=model.getObjectByName(s);tb[t]=tgt.getObjectByName(t)}
+ tgt.traverse(o=>{if(o.isMesh){o.castShadow=true;o.frustumCulled=false;const n=o.material.name;const m=o.material.clone();if(BODY_COL[n]!==undefined)m.color.setHex(BODY_COL[n]);m.roughness=n==='Hair'?.55:n==='Skin'?.6:.8;m.metalness=0;o.material=m}});
+ tgt.position.y=-.92;spinG.add(tgt);tgt.updateMatrixWorld(true);
+ // accessories on the visible rig
+ const wp=V3();tb.WristR.getWorldPosition(wp);wristDev=new THREE.Group();const dv=new THREE.Mesh(new THREE.BoxGeometry(.075,.05,.09),devMat);const led=new THREE.Mesh(new THREE.BoxGeometry(.015,.012,.045),ledMat);led.position.set(0,.03,0);wristDev.add(dv,led);
+ wristDev.position.copy(wp).add(V3(0,.06,0));tb.WristR.attach(wristDev);
+ {const cp=V3();tb.Chest.getWorldPosition(cp);const bp=new THREE.Group();const bag=new THREE.Mesh(new RoundedBox(.28,.32,.11),hoodOut);const strap=new THREE.Mesh(new THREE.BoxGeometry(.29,.035,.115),new THREE.MeshStandardMaterial({color:0x9a0712,roughness:.8}));strap.position.y=.07;bp.add(bag,strap);bag.castShadow=true;bp.position.set(cp.x,cp.y-.1,cp.z+.2);tb.Chest.attach(bp)}
+ {const np=V3();tb.Neck.getWorldPosition(np);for(const s of[-1,1]){const p=new THREE.Group();p.position.set(np.x+s*.05,np.y-.04,np.z+.13);const m=new THREE.Mesh(new THREE.CylinderGeometry(.006,.006,.17,5),new THREE.MeshStandardMaterial({color:0xb30d1f,roughness:.6}));m.position.y=-.085;const tip=new THREE.Mesh(new THREE.CylinderGeometry(.009,.009,.025,6),devMat);tip.position.y=-.17;p.add(m,tip);tb.Chest.attach(p);strings.push({p,a:0,v:0,b:0,vb:0})}}
+ window.__modelLoaded=true;$('start').disabled=false;$('start').textContent='Toque para começar';
+},undefined,e=>{$('start').textContent='Erro ao carregar o corpo';console.error(e)})}
+const _rq=new THREE.Quaternion(),_rp=new THREE.Quaternion(),_r1=V3(),_r2=V3(),_r3=V3();
+function retarget(){if(!tgt)return;model.updateMatrixWorld(true);
+ for(const [s,t] of RTMAP){const sb=srcB[s],b=tb[t];if(!sb||!b)continue;
+  sb.getWorldQuaternion(_rq);_rq.multiply(srcBindInv[s]).multiply(tgtBind[t]);b.parent.getWorldQuaternion(_rp);_rp.invert();b.quaternion.copy(_rp).multiply(_rq);b.updateMatrixWorld(true);
+  if(s==='pelvis'){sb.getWorldPosition(_r1);model.worldToLocal(_r1);_r1.sub(srcBindP.pelvis).add(tgtBindP.Hips);tgt.localToWorld(_r1);b.parent.worldToLocal(_r1);b.position.copy(_r1);b.updateMatrixWorld(true)}
+  const ch=AIMCH[s];if(ch){sb.getWorldPosition(_r2);srcB[ch].getWorldPosition(_r3);_r3.sub(_r2).normalize();const tc=tb[RTMAP.find(x=>x[0]===ch)[1]];aim(b,tc,_r3,1)}}}
 // ---------- State & physics (scratch vectors: no per-frame allocations in hot paths)
 const P=V3(),V=V3(),R=.4,HH=1.8,G=30;
 const _a=V3(),_b=V3(),_c=V3(),_d=V3(),_e=V3(),_f=V3(),_wish=V3(),_fw=V3(),_rt=V3(),_n=V3();
@@ -755,6 +771,7 @@ function animate(dt){
  for(const [b,ch] of chain){const tgt=PD[b];if(!tgt.used)continue;if(!cur[b])cur[b]=tgt.clone();cur[b].lerp(tgt,kk).normalize();_t1.copy(cur[b]).applyQuaternion(bq);aim(bones[b],bones[ch],_t1,ovW)}
  if(lastPose==='swing'||lastPose==='climb'){bones.Head.rotation.x=lerp(bones.Head.rotation.x,-.3*ovW,kk)}
 }
+function animateAll(dt){animate(dt);retarget()}
 function updateCable(dt){if(state!=='swing'||!cable.visible)return;getHand();hookFly=Math.min(1,hookFly+dt/.12);
  _a.subVectors(anchor,handPos);const L=_a.length()*hookFly;_a.normalize();_b.copy(handPos).addScaledVector(_a,L);
  cable.position.copy(handPos).addScaledVector(_a,L*.5);cable.scale.set(1,Math.max(.01,L),1);cable.quaternion.setFromUnitVectors(UP,_a);
@@ -833,7 +850,7 @@ function frame(now){
  rdt=Math.min(.05,rdt);const t0=performance.now();
  keyInput(rdt);
  if(playing&&!won&&!paused){let t=rdt;while(t>1e-5){const h=Math.min(t,1/120);step(h);t-=h}elapsed+=rdt;$('tmr').textContent=fmt(elapsed)}
- if(!paused){animate(rdt);updateCable(rdt);updateTraffic(rdt);updatePeds(rdt,now);updateSmoke(rdt)}
+ if(!paused){animateAll(rdt);updateCable(rdt);updateTraffic(rdt);updatePeds(rdt,now);updateSmoke(rdt)}
  updateCam(rdt);
  _tokP.set(P.x,P.y+1,P.z);
  for(const tk of tokens){if(tk.got)continue;tk.o.rotation.y+=rdt*2;tk.r.rotation.x=Math.PI/2+Math.sin(now/700)*.3;tk.r.rotation.y+=rdt;tk.m.position.y=tk.base+Math.sin(now/500)*.25;
@@ -850,6 +867,6 @@ function frame(now){
 reset();requestAnimationFrame(frame);
 window.__game={P,V,input,stats,perf,get state(){return state},get animState(){return animState},get flipT(){return flipT},get grounded(){return grounded},get fps(){return fpsShown},CFG,applyQuality,applyUI,
  start:startGame,reset,setCam:(y,p)=>{camYaw=y;camPitch=p},setZoom:z=>{camZoom=z},setPaused:v=>{paused=v},roofs,colliders,anchors,setYaw:y=>{heroYaw=y},
- sim:(sec)=>{for(let t=0;t<sec;t+=1/60){for(let k=0;k<2;k++)step(1/120);animate(1/60);updateCable(1/60);updateCam(1/60)}},
+ sim:(sec)=>{for(let t=0;t<sec;t+=1/60){for(let k=0;k<2;k++)step(1/120);animateAll(1/60);updateCable(1/60);updateCam(1/60)}},
  dbg:()=>{const r={};hero.updateMatrixWorld(true);for(const k of ["Hips","RightArm","RightHand"]){const v=bones[k].getWorldPosition(V3());r[k]=v.toArray().map(x=>+x.toFixed(2))}r.P=P.toArray().map(x=>+x.toFixed(2));r.bq=body.quaternion.toArray().map(x=>+x.toFixed(2));r.st=state;return r},tp:(x,y,z,vx=0,vy=0,vz=0)=>{P.set(x,y,z);V.set(vx,vy,vz);state='air';airPeak=y;grounded=false},setFlipT:v=>{flipT=v}};
 </script></body></html>
