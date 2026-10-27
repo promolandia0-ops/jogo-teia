@@ -15,6 +15,7 @@
   - `city/metropole_collision.json` — AABBs + swing anchors derived from their `BuildingPlan` footprints/heights (same generator output).
   - `city/metropole_meta.json` — preset/seed/stats sidecar.
   - `city/generate_metropole.py` — exact headless script used to produce the export.
+  - `city/metropole_shot.jpg` — Blender EEVEE overview of the exported Metropole used in-game.
 - This is **not** a hand-authored city: geometry and layout come from Procgen Maps’ Metropole generator/export path.
 
 ## Skipped
