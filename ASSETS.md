@@ -27,3 +27,8 @@
 - Main loop is uncapped `requestAnimationFrame` (no forced 30/45 cap unless user enables “Limitar FPS → 30”).
 - Auto-quality steps down only if FPS stays under ~55.
 - City: ~30 merged meshes, Draco decode, frustum culling; shadows only on building groups.
+
+## Living city (post-Metropole polish)
+- **Wind:** vertex sway on ProcgenMaps tree canopy materials + instanced bush foliage (`uTime`).
+- **Street NPCs:** up to 72 instanced low-poly citizens walking sidewalk rings around Metropole footprints (CC0-style wardrobe via `instanceColor`). Not Quaternius skinned clones (kept for hero) — mobile draw-call budget.
+- **Quality:** Baixo→Ultra; Ultra uses DPR up to 3 and 4096 shadow maps for S24-class panels. Auto quality targets ~58 FPS.

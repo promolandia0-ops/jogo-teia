@@ -87,7 +87,7 @@ const saveCfg=()=>localStorage.setItem('molusco_cfg',JSON.stringify(CFG));
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
 const DPR=Math.min(devicePixelRatio||1,3);
 renderer.setPixelRatio(Math.min(DPR,2));renderer.setSize(innerWidth,innerHeight);
-renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=0.62;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=0.7;
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.info.autoReset=false;
 document.body.prepend(renderer.domElement);
@@ -98,18 +98,18 @@ const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,0.1,1800);
 const sunDir=new THREE.Vector3().setFromSphericalCoords(1,THREE.MathUtils.degToRad(34),THREE.MathUtils.degToRad(140));
 function makeSky(sc){const s=new Sky();s.scale.setScalar(sc);const u=s.material.uniforms;u.turbidity.value=4;u.rayleigh.value=1.2;u.mieCoefficient.value=0.004;u.mieDirectionalG.value=0.8;u.sunPosition.value.copy(sunDir);return s}
 scene.add(makeSky(4000));
-scene.fog=new THREE.Fog(0xa9c4e0,220,1100);
+scene.fog=new THREE.Fog(0xa9c4e0,160,900);
 {const pm=new THREE.PMREMGenerator(renderer);const es=new THREE.Scene();es.add(makeSky(1000));
  const gnd=new THREE.Mesh(new THREE.CircleGeometry(400,16),new THREE.MeshBasicMaterial({color:0x55585e}));gnd.rotation.x=-Math.PI/2;gnd.position.y=-5;es.add(gnd);
  for(let i=0;i<24;i++){const a=i/24*Math.PI*2,m=new THREE.Mesh(new THREE.BoxGeometry(40,60+Math.random()*90,40),new THREE.MeshBasicMaterial({color:new THREE.Color().setHSL(.08+Math.random()*.5,.08,.25+Math.random()*.2)}));m.position.set(Math.cos(a)*250,0,Math.sin(a)*250);es.add(m)}
  scene.environment=pm.fromScene(es,0.02).texture;}
-scene.add(new THREE.HemisphereLight(0xcfe6ff,0x6b6a60,0.35));
+scene.add(new THREE.HemisphereLight(0xcfe6ff,0x6b6a60,0.48));
 const sun=new THREE.DirectionalLight(0xfff4e0,2.4);sun.castShadow=true;
 sun.shadow.mapSize.set(2048,2048);const SC=sun.shadow.camera;SC.left=SC.bottom=-90;SC.right=SC.top=90;SC.near=1;SC.far=500;sun.shadow.bias=-0.0004;sun.shadow.normalBias=0.04;
 scene.add(sun,sun.target);
 
 const composer=new EffectComposer(renderer);composer.addPass(new RenderPass(scene,camera));
-const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth/2,innerHeight/2),0.4,0.45,1.5);composer.addPass(bloom);composer.addPass(new OutputPass());
+const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth/2,innerHeight/2),0.22,0.5,1.15);composer.addPass(bloom);composer.addPass(new OutputPass());
 let useBloom=true;
 
 let seed=4242;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
@@ -140,14 +140,99 @@ const blockC=()=>0, streetC=()=>0;
 const colliders=[],anchors=[],roofs=[],camBlockers=[];
 function addCol(minx,miny,minz,maxx,maxy,maxz,o={}){const c={min:V3(minx,miny,minz),max:V3(maxx,maxy,maxz),box:new THREE.Box3(V3(minx,miny,minz),V3(maxx,maxy,maxz)),...o};colliders.push(c);if(maxy-miny>3)camBlockers.push(c);return c}
 const smokeSources=[];
-// Hotfix: Metropole rewrite stubbed NPC/traffic updaters but left applyQuality
-// assigning undeclared pedCount/trafCount (ES module = strict) → ReferenceError
-// aborted the script before requestAnimationFrame, so the GLB never painted.
 let pedCount=0, trafCount=0;
 const traffic=[], peds=[];
-function updateSmoke(){}
-function updateTraffic(){}
-function updatePeds(){}
+let windMats=[], windT=0;
+const tm=new THREE.Matrix4(), _qc=new THREE.Color();
+// Instanced street NPCs (CC0-style low-poly citizens — clothes/skin/hair via instanceColor)
+const PED_MAX=72;
+function mkPedGeo(){
+  const parts=[];
+  const box=(w,h,d,x,y,z)=>{const g=new THREE.BoxGeometry(w,h,d);g.translate(x,y,z);return g};
+  parts.push(box(.38,.55,.24,0,1.12,0)); // torso (clothes)
+  parts.push(new THREE.SphereGeometry(.125,8,6).translate(0,1.58,0)); // head
+  parts.push(box(.14,.55,.16,-.1,.42,0), box(.14,.55,.16,.1,.42,0)); // legs
+  parts.push(box(.1,.42,.12,-.26,1.12,0), box(.1,.42,.12,.26,1.12,0)); // arms
+  // hair cap
+  parts.push(new THREE.SphereGeometry(.13,8,5,0,Math.PI*2,0,Math.PI*.55).translate(0,1.64,0));
+  return mergeGeometries(parts);
+}
+const pedGeo=mkPedGeo();
+const pedMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.78,metalness:0,vertexColors:false});
+// tint whole instance; variety comes from setColorAt
+const pedMesh=new THREE.InstancedMesh(pedGeo,pedMat,PED_MAX);
+pedMesh.castShadow=true;pedMesh.receiveShadow=false;pedMesh.frustumCulled=true;pedMesh.count=0;pedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+scene.add(pedMesh);
+// Extra foliage puffs (park atmosphere) — Kenney-like low poly bushes
+const BUSH_MAX=96;
+const bushGeo=(()=>{const a=new THREE.IcosahedronGeometry(.55,0),b=new THREE.IcosahedronGeometry(.4,0);b.translate(.25,.15,-.1);const c=new THREE.IcosahedronGeometry(.35,0);c.translate(-.2,.2,.15);return mergeGeometries([a,b,c])})();
+const bushMat=new THREE.MeshStandardMaterial({color:0x2f6b28,roughness:.95,metalness:0});
+bushMat.onBeforeCompile=s=>{s.uniforms.uTime={value:0};s.vertexShader='uniform float uTime;\n'+s.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+ float w=sin(uTime*1.4+transformed.x*2.1+transformed.z*1.7)*.04+sin(uTime*.9+transformed.z)*.025;
+ transformed.x+=w; transformed.z+=cos(uTime*1.2+transformed.x*1.5)*.03;`);s.userData={};bushMat.userData.shader=s;windMats.push(bushMat)};
+const bushMesh=new THREE.InstancedMesh(bushGeo,bushMat,BUSH_MAX);
+bushMesh.castShadow=true;bushMesh.count=0;scene.add(bushMesh);
+windMats.push(bushMat);
+function placeFoliage(){
+  let n=0; const roofsNear=[...roofs].sort((a,b)=>a.roofY-b.roofY).slice(0,40);
+  for(const b of roofsNear){
+    if(n>=BUSH_MAX)break;
+    for(let k=0;k<2&&n<BUSH_MAX;k++){
+      const ang=rnd()*Math.PI*2, rad=Math.max(b.w,b.d)*.55+1.2+rnd()*2;
+      const x=b.cx+Math.cos(ang)*rad, z=b.cz+Math.sin(ang)*rad;
+      if(Math.hypot(x,z)>CITY_HALF-8)continue;
+      const sc=.7+rnd()*1.1;
+      tm.makeScale(sc,sc*(.8+rnd()*.5),sc).setPosition(x,0,z);
+      bushMesh.setMatrixAt(n++,tm);
+    }
+  }
+  bushMesh.count=n;bushMesh.instanceMatrix.needsUpdate=true;
+}
+function placePeds(){
+  peds.length=0;
+  // Walk loops around building footprints (sidewalk ring)
+  const pool=[...roofs].filter(b=>b.roofY>8&&b.w>8&&b.d>8);
+  for(let i=0;i<PED_MAX;i++){
+    const b=pool[i%pool.length];
+    const margin=1.6+rnd()*1.2;
+    const minX=b.minX-margin,maxX=b.maxX+margin,minZ=b.minZ-margin,maxZ=b.maxZ+margin;
+    const perim=2*((maxX-minX)+(maxZ-minZ));
+    peds.push({
+      minX,maxX,minZ,maxZ,perim,
+      t:rnd()*perim,
+      sp:(.9+rnd()*1.4)*(rnd()<.5?1:-1),
+      ph:rnd()*Math.PI*2,
+      bob:1.1+rnd()*.25
+    });
+    // clothes hue variety (CC0-style wardrobe)
+    const cloth=new THREE.Color().setHSL(rnd(),.45+.2*rnd(),.28+.25*rnd());
+    pedMesh.setColorAt(i,cloth);
+  }
+  if(pedMesh.instanceColor)pedMesh.instanceColor.needsUpdate=true;
+}
+function pedPos(p,t){
+  const w=p.maxX-p.minX,d=p.maxZ-p.minZ; let u=((t%p.perim)+p.perim)%p.perim;
+  if(u<w)return [p.minX+u,p.minZ,1];
+  u-=w; if(u<d)return [p.maxX,p.minZ+u,0];
+  u-=d; if(u<w)return [p.maxX-u,p.maxZ,-1];
+  u-=w; return [p.minX,p.maxZ-u,Math.PI];
+}
+function updateSmoke(dt){windT+=dt; for(const m of windMats){const s=m.userData&&m.userData.shader; if(s&&s.uniforms&&s.uniforms.uTime)s.uniforms.uTime.value=windT}}
+function updateTraffic(){/* Metropole ships static prop cars; dynamic traffic deferred */}
+function updatePeds(dt,now){
+  if(!pedCount){pedMesh.count=0;return}
+  const n=Math.min(pedCount,peds.length);
+  for(let i=0;i<n;i++){
+    const p=peds[i]; p.t+=p.sp*dt*1.7;
+    const [x,z,face]=pedPos(p,p.t);
+    const y=Math.abs(Math.sin(now*.01+p.ph))*0.06;
+    const yaw=face===1?Math.PI/2:face===-1?-Math.PI/2:face===0?0:Math.PI;
+    const facing=p.sp<0?yaw+Math.PI:yaw;
+    tm.makeRotationY(facing).setPosition(x,y,z);
+    pedMesh.setMatrixAt(i,tm);
+  }
+  pedMesh.count=n; pedMesh.instanceMatrix.needsUpdate=true;
+}
 let cityReady=false, cityRoot=null;
 const cityLoad= (async()=>{
   const draco=new DRACOLoader();
@@ -178,16 +263,38 @@ const cityLoad= (async()=>{
     o.frustumCulled=true;
     o.matrixAutoUpdate=false; o.updateMatrix();
     const mats=[].concat(o.material||[]);
-    for(const m of mats){if(!m)continue; m.side=THREE.FrontSide; if(m.map)m.map.anisotropy=MAXANI;
+    for(const m of mats){if(!m)continue; m.side=THREE.DoubleSide; if(m.map)m.map.anisotropy=MAXANI;
       // mobile: drop env map intensity cost on distant city mats
       if('envMapIntensity' in m) m.envMapIntensity=.35;
       if(m.isMeshPhysicalMaterial){m.transmission=0; m.thickness=0;}
+      // Wind sway on tree canopy (+ light trunk rustle)
+      const nm=(m.name||o.name||'');
+      if(/tree_canopy|tree_ca|canopy|Prop_tree/i.test(nm)){
+        windMats.push(m);
+        m.onBeforeCompile=s=>{
+          s.uniforms.uTime={value:0};
+          s.vertexShader='uniform float uTime;\n'+s.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+            float h=clamp(position.y*0.12,0.,1.8);
+            float gust=sin(uTime*1.15+transformed.x*.08+transformed.z*.1);
+            float gust2=cos(uTime*.7+transformed.x*.05);
+            transformed.x+=(gust*.11+gust2*.05)*h;
+            transformed.z+=(cos(uTime*1.05+transformed.z*.08)*.07)*h;
+            transformed.y+=sin(uTime*1.3+transformed.x*.2)*.015*h;`);
+          m.userData.shader=s;
+        };
+        m.needsUpdate=true;
+      }
+      // Soft window night-ish emissive pulse kept subtle for midday
+      if(/window/i.test(nm) && m.emissive){
+        m.emissiveIntensity=Math.max(m.emissiveIntensity||0,.15);
+      }
     }
   });
   cityRoot.updateMatrixWorld(true);
   scene.add(cityRoot);
+  placePeds(); placeFoliage();
   cityReady=true;
-  console.info('[Molusco] Procgen Maps Metropole loaded', colData.meta, 'colliders',colliders.length,'roofs',roofs.length);
+  console.info('[Molusco] Procgen Maps Metropole loaded', colData.meta, 'colliders',colliders.length,'roofs',roofs.length,'windMats',windMats.length);
 })().catch(e=>{console.error(e); $('start').textContent='Erro ao carregar a cidade Metropole';});
 
 // ---------- Hero: UAL skeleton driver (invisible) + Diesel visible body (CC0)
@@ -311,7 +418,7 @@ let flipT=-1,flipUsed=false,trick='front',trickN=0,wallRunT=0,airPeak=0,landInfo
 let camYaw=0,camPitch=.22,heroYaw=Math.PI,collected=0,elapsed=0,playing=false,paused=false,won=false;
 const input={x:0,y:0,jump:false,web:false};
 const stats={jumps:0,lands:0,rolls:0,flips:0,grapples:0,climbs:0,mantles:0,wallJumps:0};
-function reset(){P.set(8,SW+0.1,18);V.set(0,0,0);heroYaw=Math.PI;camYaw=0.15;state='air';cable.visible=hook.visible=false;mantle.on=false;flipT=-1;collected=0;elapsed=0;won=false;airPeak=P.y;placeTokens();$('cnt').textContent='0/10';$('win').classList.add('hidden')}
+function reset(){P.set(0,SW+0.15,22);V.set(0,0,0);heroYaw=Math.PI;camYaw=0.25;state='air';cable.visible=hook.visible=false;mantle.on=false;flipT=-1;collected=0;elapsed=0;won=false;airPeak=P.y;placeTokens();$('cnt').textContent='0/10';$('win').classList.add('hidden')}
 function groundH(x,z){return 0}
 function camFwd(o){return o.set(-Math.sin(camYaw),0,-Math.cos(camYaw))}
 const ray=new THREE.Ray(),hitP=V3(),_blk=V3();
@@ -549,13 +656,12 @@ $('start').addEventListener('click',startGame);$('again').addEventListener('clic
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight)});
 
 // ---------- Quality profiles + settings
-const PROF=[{n:'Baixo',pr:1,sh:1024,bl:false,peds:16,cars:8},{n:'Médio',pr:1.5,sh:2048,bl:true,peds:36,cars:16},{n:'Alto',pr:2.25,sh:2048,bl:true,peds:56,cars:22},{n:'Ultra',pr:Math.min(3,DPR||3),sh:4096,bl:true,peds:72,cars:28}];
-const DIST=[{far:260,fog:[90,250]},{far:480,fog:[160,460]},{far:900,fog:[220,850]}];
+const PROF=[{n:'Baixo',pr:1,sh:1024,bl:false,peds:12,cars:0},{n:'Médio',pr:1.5,sh:2048,bl:true,peds:28,cars:0},{n:'Alto',pr:2.5,sh:2048,bl:true,peds:48,cars:0},{n:'Ultra',pr:Math.min(3,DPR||3),sh:4096,bl:true,peds:72,cars:0}];
+const DIST=[{far:320,fog:[70,280]},{far:650,fog:[120,520]},{far:1200,fog:[180,950]}];
 let prScale=1,fAcc=0,fN=0,fpsShown=60,warm=0,lowCount=0;
 function applyQuality(){const p=PROF[CFG.q];const pr=Math.min(DPR,p.pr)*prScale;renderer.setPixelRatio(pr);composer.setPixelRatio(pr);composer.setSize(innerWidth,innerHeight);useBloom=p.bl;
  renderer.shadowMap.enabled=true;if(sun.shadow.mapSize.x!==p.sh){sun.shadow.mapSize.set(p.sh,p.sh);sun.shadow.map?.dispose();sun.shadow.map=null}
- // Keep 0 until CC0 NPC/car pass is re-wired onto Metropole streets
- pedCount=0;trafCount=0;const d=DIST[CFG.dist];camera.far=d.far;scene.fog.near=d.fog[0];scene.fog.far=d.fog[1];camera.updateProjectionMatrix()}
+ pedCount=Math.min(p.peds,PED_MAX);trafCount=0;const d=DIST[CFG.dist];camera.far=d.far;scene.fog.near=d.fog[0];scene.fog.far=d.fog[1];camera.updateProjectionMatrix()}
 function applyUI(){document.documentElement.style.setProperty('--bs',CFG.bs);document.body.classList.toggle('lefty',!!+CFG.lefty);$('fps').style.display=+CFG.fps?'block':'none';
  document.querySelectorAll('#cfg .opt').forEach(b=>b.classList.toggle('sel',String(CFG[b.dataset.k])===b.dataset.v));$('sens').value=CFG.sens;$('sensV').textContent=(+CFG.sens).toFixed(1)+'×'}
 document.querySelectorAll('#cfg .opt').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.k,v=+b.dataset.v;CFG[k]=v;if(k==='q'){prScale=1;warm=0;if(v===0&&CFG.cap===undefined)CFG.cap=1}saveCfg();applyUI();applyQuality()}));
@@ -586,11 +692,11 @@ function frame(now){
  perf._c+=renderer.info.render.calls;perf._cpu+=performance.now()-t0;perf._n++;
  fAcc+=rdt;fN++;warm+=rdt;if(fAcc>1.5){const fps=fN/fAcc;fpsShown=fps;perf.calls=Math.round(perf._c/perf._n);perf.cpuMs=perf._cpu/perf._n;perf.frameMs=1000/fps;perf.tris=renderer.info.render.triangles;perf._c=perf._cpu=perf._n=0;
   $('fps').textContent=`${fps.toFixed(0)} fps · ${perf.frameMs.toFixed(1)} ms · CPU ${perf.cpuMs.toFixed(1)} ms · ${perf.calls} draw calls · ${PROF[CFG.q].n} ×${prScale.toFixed(2)}`;
-  if(+CFG.auto&&warm>3&&!paused){const target=+CFG.cap?27:55;if(fps<target){lowCount++;if(lowCount>=2){lowCount=0;if(prScale>.65){prScale=Math.max(.6,prScale-.15)}else if(CFG.q>0){CFG.q--;prScale=1;applyUI()}applyQuality()}}else lowCount=0}
+  if(+CFG.auto&&warm>3&&!paused){const target=+CFG.cap?27:58;if(fps<target){lowCount++;if(lowCount>=2){lowCount=0;if(prScale>.65){prScale=Math.max(.6,prScale-.15)}else if(CFG.q>0){CFG.q--;prScale=1;applyUI()}applyQuality()}}else lowCount=0}
   fAcc=0;fN=0}
 }
 Promise.resolve(cityLoad).finally(()=>{reset();requestAnimationFrame(frame)});
-window.__game={P,V,input,stats,perf,get state(){return state},get animState(){return animState},get flipT(){return flipT},get grounded(){return grounded},get fps(){return fpsShown},CFG,applyQuality,applyUI,
+window.__game={P,V,input,stats,perf,get pedCount(){return pedCount},get windMats(){return windMats.length},pedMesh,bushMesh,get state(){return state},get animState(){return animState},get flipT(){return flipT},get grounded(){return grounded},get fps(){return fpsShown},CFG,applyQuality,applyUI,
  start:startGame,reset,setCam:(y,p)=>{camYaw=y;camPitch=p},setZoom:z=>{camZoom=z},setPaused:v=>{paused=v},roofs,colliders,anchors,setYaw:y=>{heroYaw=y},
  sim:(sec)=>{for(let t=0;t<sec;t+=1/60){for(let k=0;k<2;k++)step(1/120);animateAll(1/60);updateCable(1/60);updateCam(1/60)}},
  dbg:()=>{const r={};hero.updateMatrixWorld(true);for(const k of ["Hips","RightArm","RightHand"]){const v=bones[k].getWorldPosition(V3());r[k]=v.toArray().map(x=>+x.toFixed(2))}r.P=P.toArray().map(x=>+x.toFixed(2));r.bq=body.quaternion.toArray().map(x=>+x.toFixed(2));r.st=state;return r},tp:(x,y,z,vx=0,vy=0,vz=0)=>{P.set(x,y,z);V.set(vx,vy,vz);state='air';airPeak=y;grounded=false},setFlipT:v=>{flipT=v}};
