@@ -131,7 +131,7 @@ function asphalt(){const [c,g]=cv(512,512);g.fillStyle='#34373b';g.fillRect(0,0,
  for(let i=0;i<18000;i++){const v=35+rnd()*45;g.fillStyle=`rgb(${v},${v},${v+3})`;g.fillRect(rnd()*512,rnd()*512,1.5,1.5)}
  const t=tex(c);t.repeat.set(90,90);return t}
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(1600,1600),new THREE.MeshStandardMaterial({map:asphalt(),roughness:.92,metalness:0}));
-ground.rotation.x=-Math.PI/2;ground.position.y=-0.02;ground.receiveShadow=true;scene.add(ground);
+ground.rotation.x=-Math.PI/2;ground.position.y=-0.05;ground.receiveShadow=true;ground.visible=false;scene.add(ground);
 
 // ---------- City: Procgen Maps Metropole (GPL-3.0) — Blender headless export of THEIR generator
 // Source: https://github.com/Beneking102/bene-proggen-maps  preset METROPOLE seed=1
@@ -140,13 +140,19 @@ const blockC=()=>0, streetC=()=>0;
 const colliders=[],anchors=[],roofs=[],camBlockers=[];
 function addCol(minx,miny,minz,maxx,maxy,maxz,o={}){const c={min:V3(minx,miny,minz),max:V3(maxx,maxy,maxz),box:new THREE.Box3(V3(minx,miny,minz),V3(maxx,maxy,maxz)),...o};colliders.push(c);if(maxy-miny>3)camBlockers.push(c);return c}
 const smokeSources=[];
+// Hotfix: Metropole rewrite stubbed NPC/traffic updaters but left applyQuality
+// assigning undeclared pedCount/trafCount (ES module = strict) → ReferenceError
+// aborted the script before requestAnimationFrame, so the GLB never painted.
+let pedCount=0, trafCount=0;
+const traffic=[], peds=[];
 function updateSmoke(){}
 function updateTraffic(){}
 function updatePeds(){}
 let cityReady=false, cityRoot=null;
 const cityLoad= (async()=>{
   const draco=new DRACOLoader();
-  draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/');
+  // glTF KHR_draco needs the gltf/ decoder build (mobile-safe)
+  draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/');
   const cityLoader=new GLTFLoader(); cityLoader.setDRACOLoader(draco);
   const [colData,gltf]=await Promise.all([
     fetch('city/metropole_collision.json').then(r=>{if(!r.ok)throw new Error('collision json');return r.json()}),
@@ -178,6 +184,7 @@ const cityLoad= (async()=>{
       if(m.isMeshPhysicalMaterial){m.transmission=0; m.thickness=0;}
     }
   });
+  cityRoot.updateMatrixWorld(true);
   scene.add(cityRoot);
   cityReady=true;
   console.info('[Molusco] Procgen Maps Metropole loaded', colData.meta, 'colliders',colliders.length,'roofs',roofs.length);
@@ -304,7 +311,7 @@ let flipT=-1,flipUsed=false,trick='front',trickN=0,wallRunT=0,airPeak=0,landInfo
 let camYaw=0,camPitch=.22,heroYaw=Math.PI,collected=0,elapsed=0,playing=false,paused=false,won=false;
 const input={x:0,y:0,jump:false,web:false};
 const stats={jumps:0,lands:0,rolls:0,flips:0,grapples:0,climbs:0,mantles:0,wallJumps:0};
-function reset(){P.set(8,SW+0.1,0);V.set(0,0,0);heroYaw=Math.PI;camYaw=0;state='air';cable.visible=hook.visible=false;mantle.on=false;flipT=-1;collected=0;elapsed=0;won=false;airPeak=P.y;placeTokens();$('cnt').textContent='0/10';$('win').classList.add('hidden')}
+function reset(){P.set(8,SW+0.1,18);V.set(0,0,0);heroYaw=Math.PI;camYaw=0.15;state='air';cable.visible=hook.visible=false;mantle.on=false;flipT=-1;collected=0;elapsed=0;won=false;airPeak=P.y;placeTokens();$('cnt').textContent='0/10';$('win').classList.add('hidden')}
 function groundH(x,z){return 0}
 function camFwd(o){return o.set(-Math.sin(camYaw),0,-Math.cos(camYaw))}
 const ray=new THREE.Ray(),hitP=V3(),_blk=V3();
@@ -547,7 +554,8 @@ const DIST=[{far:260,fog:[90,250]},{far:480,fog:[160,460]},{far:900,fog:[220,850
 let prScale=1,fAcc=0,fN=0,fpsShown=60,warm=0,lowCount=0;
 function applyQuality(){const p=PROF[CFG.q];const pr=Math.min(DPR,p.pr)*prScale;renderer.setPixelRatio(pr);composer.setPixelRatio(pr);composer.setSize(innerWidth,innerHeight);useBloom=p.bl;
  renderer.shadowMap.enabled=true;if(sun.shadow.mapSize.x!==p.sh){sun.shadow.mapSize.set(p.sh,p.sh);sun.shadow.map?.dispose();sun.shadow.map=null}
- pedCount=p.peds;trafCount=p.cars;const d=DIST[CFG.dist];camera.far=d.far;scene.fog.near=d.fog[0];scene.fog.far=d.fog[1];camera.updateProjectionMatrix()}
+ // Keep 0 until CC0 NPC/car pass is re-wired onto Metropole streets
+ pedCount=0;trafCount=0;const d=DIST[CFG.dist];camera.far=d.far;scene.fog.near=d.fog[0];scene.fog.far=d.fog[1];camera.updateProjectionMatrix()}
 function applyUI(){document.documentElement.style.setProperty('--bs',CFG.bs);document.body.classList.toggle('lefty',!!+CFG.lefty);$('fps').style.display=+CFG.fps?'block':'none';
  document.querySelectorAll('#cfg .opt').forEach(b=>b.classList.toggle('sel',String(CFG[b.dataset.k])===b.dataset.v));$('sens').value=CFG.sens;$('sensV').textContent=(+CFG.sens).toFixed(1)+'×'}
 document.querySelectorAll('#cfg .opt').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.k,v=+b.dataset.v;CFG[k]=v;if(k==='q'){prScale=1;warm=0;if(v===0&&CFG.cap===undefined)CFG.cap=1}saveCfg();applyUI();applyQuality()}));
