@@ -1,0 +1,2 @@
+Diesel character model: CC0 (public domain). Mixamo-ready humanoid used as the Molusco player body.
+Animations: Quaternius Universal Animation Library 1 & 2 (CC0), retargeted at runtime onto the Diesel Mixamo skeleton.

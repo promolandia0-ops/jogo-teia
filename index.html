@@ -55,13 +55,13 @@ body.lefty #bHook{right:auto;left:max(22px,env(safe-area-inset-left))}body.lefty
 <p>Ajude o Molusco a coletar as <b>10 fichas brilhantes</b> nos telhados o mais rápido possível!<br>
 Joystick para correr, arraste do outro lado para girar a câmera. Segure <b>Gancho</b> para disparar o cabo e balançar; solte para se lançar (com mortal!). Corra contra uma parede para escalar; <b>Pular</b> na parede salta dela; toque duas vezes em <b>Pular</b> no ar para dar um mortal.<br><small>Teclado: WASD, Espaço = Pular, Shift/E = Gancho, R = Reiniciar, setas = câmera</small></p>
 <button id="start" disabled>Carregando…</button>
-<p class="cred">Personagem: modelo “Ultimate Modular Men – Casual Hoodie” (Quaternius, CC0, recolorido) animado por retarget das “Universal Animation Library 1 e 2” (Quaternius, CC0). Motor: three.js (MIT). Tudo o mais gerado por código.</p></div>
-<div class="screen hidden" id="win"><h1>VOCÊ VENCEU!<span id="winT"></span></h1><p>O Molusco coletou todas as fichas da cidade.</p><button id="again">Jogar de novo</button><p class="cred">Modelo e animações: Quaternius (CC0) · three.js (MIT)</p></div>
+<p class="cred">Personagem: modelo Diesel (CC0, Mixamo-ready) animado por retarget das Universal Animation Library 1 e 2 (Quaternius, CC0). Cabo/gancho próprio — não é teia. Motor: three.js (MIT).</p></div>
+<div class="screen hidden" id="win"><h1>VOCÊ VENCEU!<span id="winT"></span></h1><p>O Molusco coletou todas as fichas da cidade.</p><button id="again">Jogar de novo</button><p class="cred">Diesel (CC0) · animações Quaternius UAL (CC0) · three.js (MIT)</p></div>
 <div class="screen hidden" id="cfg"><h2>Ajustes</h2>
-<div class="row"><span>Qualidade</span><button class="opt" data-k="q" data-v="0">Baixo</button><button class="opt" data-k="q" data-v="1">Médio</button><button class="opt" data-k="q" data-v="2">Ultra</button></div>
+<div class="row"><span>Qualidade</span><button class="opt" data-k="q" data-v="0">Baixo</button><button class="opt" data-k="q" data-v="1">Médio</button><button class="opt" data-k="q" data-v="2">Alto</button><button class="opt" data-k="q" data-v="3">Ultra</button></div>
 <div class="row"><span>Ajuste automático</span><button class="opt" data-k="auto" data-v="1">Ligado</button><button class="opt" data-k="auto" data-v="0">Desligado</button></div>
 <div class="row"><span>Distância de visão</span><button class="opt" data-k="dist" data-v="0">Curta</button><button class="opt" data-k="dist" data-v="1">Média</button><button class="opt" data-k="dist" data-v="2">Longa</button></div>
-<div class="row"><span>Limitar a 30 fps</span><button class="opt" data-k="cap" data-v="1">Sim</button><button class="opt" data-k="cap" data-v="0">Não</button></div>
+<div class="row"><span>Limitar FPS</span><button class="opt" data-k="cap" data-v="1">30</button><button class="opt" data-k="cap" data-v="0">Livre (60–120)</button></div>
 <div class="row"><span>Mostrar FPS</span><button class="opt" data-k="fps" data-v="1">Sim</button><button class="opt" data-k="fps" data-v="0">Não</button></div>
 <div class="row"><span>Efeitos de câmera</span><button class="opt" data-k="fx" data-v="1">Sim</button><button class="opt" data-k="fx" data-v="0">Não</button></div>
 <div class="row"><span>Sensibilidade da câmera</span><input id="sens" type="range" min="0.4" max="2.2" step="0.1" style="width:180px"><b id="sensV"></b></div>
@@ -81,11 +81,11 @@ import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
 const $=id=>document.getElementById(id);
 const V3=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
 // settings (persisted)
-const CFG=Object.assign({q:1,auto:1,dist:1,cap:0,fps:0,fx:1,sens:1,bs:1,lefty:0},JSON.parse(localStorage.getItem('molusco_cfg')||'{}'));
+const CFG=Object.assign({q:2,auto:1,dist:2,cap:0,fps:1,fx:1,sens:1,bs:1,lefty:0},JSON.parse(localStorage.getItem('molusco_cfg')||'{}'));
 const saveCfg=()=>localStorage.setItem('molusco_cfg',JSON.stringify(CFG));
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
 const DPR=Math.min(devicePixelRatio||1,3);
-renderer.setPixelRatio(Math.min(DPR,1.5));renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(DPR,2));renderer.setSize(innerWidth,innerHeight);
 renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=0.62;
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.info.autoReset=false;
@@ -470,7 +470,7 @@ function updatePeds(dt,now){for(let i=0;i<pedCount;i++){const p=peds[i];p.p=(p.p
   if(side===0){x=p.x0+u;z=p.z0-pedE;r=Math.PI/2}else if(side===1){x=p.x0+pedE;z=p.z0+u;r=0}else if(side===2){x=p.x0-u;z=p.z0+pedE;r=-Math.PI/2}else{x=p.x0-pedE;z=p.z0-u;r=Math.PI}
   if(p.sp<0)r+=Math.PI;tm.makeRotationY(r).setPosition(x,SW+Math.abs(Math.sin(now*.008+p.ph))*.05,z);pedMesh.setMatrixAt(i,tm)}
  pedMesh.count=pedCount;pedMesh.instanceMatrix.needsUpdate=true}
-// ---------- Hero: Quaternius UAL rig (CC0) + procedural outfit/face/hair
+// ---------- Hero: UAL skeleton driver (invisible) + Diesel visible body (CC0)
 const outfit=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.75,metalness:0});
 outfit.onBeforeCompile=s=>{
  s.vertexShader='varying vec3 vB;\n'+s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvB=position;');
@@ -521,14 +521,14 @@ loader.load('molusco.glb',g=>{
  const hipRest=bones.Hips.position.clone();
  loader.load('molusco_parkour.glb',g2=>{
   const all=[...g.animations,...g2.animations],clip=n=>all.find(c=>c.name===n);
-  for(const [k,n] of [['idle','Idle_Loop'],['walk','Walk_Loop'],['jog','Jog_Fwd_Loop'],['sprint','Sprint_Loop'],['jumpStart','NinjaJump_Start'],['air','NinjaJump_Idle_Loop'],['fall','Jump_Loop'],['land','NinjaJump_Land'],['landS','Jump_Land'],['roll','Roll'],['climbUp','ClimbUp_1m']]){
+  for(const [k,n] of [['idle','Idle_Loop'],['walk','Walk_Loop'],['jog','Jog_Fwd_Loop'],['sprint','Sprint_Loop'],['jumpStart','NinjaJump_Start'],['air','NinjaJump_Idle_Loop'],['fall','Jump_Loop'],['land','NinjaJump_Land'],['landS','Jump_Land'],['roll','Roll'],['climbUp','ClimbUp_1m'],['crouch','Crouch_Idle_Loop'],['crouchWalk','Crouch_Fwd_Loop'],['slide','Slide_Start'],['slideLoop','Slide_Loop'],['slideExit','Slide_Exit']]){
    const c=clip(n);if(!c){console.warn('missing clip',n);continue}
    c.tracks=c.tracks.filter(t=>!/^root\.(position|quaternion)/.test(t.name));
    for(const t of c.tracks)if(/^pelvis\.position/.test(t.name)){const v=t.values;
     if(k==='climbUp'){for(let i=0;i<v.length;i+=3){v[i]=hipRest.x;v[i+1]=hipRest.y;v[i+2]=hipRest.z}}
-    else if(k==='roll'){const x0=v[0],z0=v[2];for(let i=0;i<v.length;i+=3){v[i]=x0;v[i+2]=z0}}
+    else if(k==='roll'||k==='slide'||k==='slideLoop'||k==='slideExit'){const x0=v[0],z0=v[2];for(let i=0;i<v.length;i+=3){v[i]=x0;v[i+2]=z0}}
     else{for(let i=0;i<v.length;i+=3){v[i]=hipRest.x;v[i+2]=hipRest.z}}}
-   const a=mixer.clipAction(c);a.play();a.setEffectiveWeight(k==='idle'?1:0);if(['jumpStart','land','landS','roll','climbUp'].includes(k)){a.setLoop(THREE.LoopOnce);a.clampWhenFinished=true}acts[k]=a}
+   const a=mixer.clipAction(c);a.play();a.setEffectiveWeight(k==='idle'?1:0);if(['jumpStart','land','landS','roll','climbUp','slide','slideExit'].includes(k)){a.setLoop(THREE.LoopOnce);a.clampWhenFinished=true}acts[k]=a}
   loadBody();
  },undefined,e=>{$('start').textContent='Erro ao carregar animações';console.error(e)});
 
@@ -551,35 +551,37 @@ function placeTokens(){tokens.forEach(t=>scene.remove(t.m));tokens=[];
  const rs=[...roofs].sort((a,b)=>((a.cx*7+a.cz*13)%5+5)%5-((b.cx*7+b.cz*13)%5+5)%5).slice(0,10);
  rs.forEach(b=>{const g=new THREE.Group();const o=new THREE.Mesh(tokG,tokM),r=new THREE.Mesh(ringG,tokM);g.add(o,r);g.position.set(b.tok[0],b.tok[1],b.tok[2]);scene.add(g);tokens.push({m:g,o,r,got:false,base:b.tok[1]})})}
 
-// ---------- Visible body: Quaternius "Ultimate Modular Men" Casual_Hoodie (CC0), recolored to the Molusco outfit,
-// driven every frame by the UAL skeleton (runtime retarget: bind-relative rotation + limb direction matching)
+// ---------- Visible body: Diesel (CC0 Mixamo-ready), driven by UAL skeleton retarget
 let tgt=null;const tb={},srcBindInv={},tgtBind={},tgtBindP={},srcBindP={};
-const RTMAP=[['pelvis','Hips'],['spine_01','Abdomen'],['spine_02','Torso'],['spine_03','Chest'],['neck_01','Neck'],['Head','Head'],['clavicle_l','ShoulderL'],['upperarm_l','UpperArmL'],['lowerarm_l','LowerArmL'],['hand_l','WristL'],['clavicle_r','ShoulderR'],['upperarm_r','UpperArmR'],['lowerarm_r','LowerArmR'],['hand_r','WristR'],['thigh_l','UpperLegL'],['calf_l','LowerLegL'],['foot_l','FootL'],['thigh_r','UpperLegR'],['calf_r','LowerLegR'],['foot_r','FootR']];
+const RTMAP=[['pelvis','mixamorigHips'],['spine_01','mixamorigSpine'],['spine_02','mixamorigSpine1'],['spine_03','mixamorigSpine2'],['neck_01','mixamorigNeck'],['Head','mixamorigHead'],['clavicle_l','mixamorigLeftShoulder'],['upperarm_l','mixamorigLeftArm'],['lowerarm_l','mixamorigLeftForeArm'],['hand_l','mixamorigLeftHand'],['clavicle_r','mixamorigRightShoulder'],['upperarm_r','mixamorigRightArm'],['lowerarm_r','mixamorigRightForeArm'],['hand_r','mixamorigRightHand'],['thigh_l','mixamorigLeftUpLeg'],['calf_l','mixamorigLeftLeg'],['foot_l','mixamorigLeftFoot'],['thigh_r','mixamorigRightUpLeg'],['calf_r','mixamorigRightLeg'],['foot_r','mixamorigRightFoot']];
 const AIMCH={upperarm_l:'lowerarm_l',lowerarm_l:'hand_l',upperarm_r:'lowerarm_r',lowerarm_r:'hand_r',thigh_l:'calf_l',calf_l:'foot_l',thigh_r:'calf_r',calf_r:'foot_r'};
 const srcB={};
 function bindPose(root){root.updateMatrixWorld(true);const out={};const m=new THREE.Matrix4(),mi=new THREE.Matrix4();root.traverse(o=>{if(o.isSkinnedMesh){const sk=o.skeleton;sk.bones.forEach((b,i)=>{if(out[b.name])return;mi.copy(sk.boneInverses[i]).invert();m.copy(o.bindMatrix).multiply(mi);const p=V3(),q=new THREE.Quaternion(),sc=V3();m.decompose(p,q,sc);out[b.name]={q,p}})}});return out}
-const BODY_COL={Purple:0x0f0f12,White:0x9e0b19,LightBlue:0x19191d,Hair:0x0a0a0c};
-function loadBody(){loader.load('molusco_body.glb',g=>{
+function loadBody(){loader.load('diesel.glb',g=>{
  tgt=g.scene;
+ // Diesel is ~1.98m with feet near y=0; body group sits at y=.92 so offset feet to hero origin
  const sb=bindPose(model);
  for(const [k,v] of Object.entries(sb)){srcBindInv[k]=v.q.clone().invert();srcBindP[k]=v.p}
  const tbp=bindPose(tgt);for(const [k,v] of Object.entries(tbp)){tgtBind[k]=v.q;tgtBindP[k]=v.p}
  for(const [s,t] of RTMAP){srcB[s]=model.getObjectByName(s);tb[t]=tgt.getObjectByName(t)}
- tgt.traverse(o=>{if(o.isMesh){o.castShadow=true;o.frustumCulled=false;const n=o.material.name;const m=o.material.clone();if(BODY_COL[n]!==undefined)m.color.setHex(BODY_COL[n]);m.roughness=n==='Hair'?.55:n==='Skin'?.6:.8;m.metalness=0;o.material=m}});
+ tgt.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;
+  if(o.material){const mats=[].concat(o.material);for(const m of mats){if(!m)continue;m.side=THREE.FrontSide;if(m.map)m.map.anisotropy=MAXANI;if(m.normalMap)m.normalMap.anisotropy=MAXANI}}}});
  tgt.position.y=-.92;spinG.add(tgt);tgt.updateMatrixWorld(true);
- // accessories on the visible rig
- const wp=V3();tb.WristR.getWorldPosition(wp);wristDev=new THREE.Group();const dv=new THREE.Mesh(new THREE.BoxGeometry(.075,.05,.09),devMat);const led=new THREE.Mesh(new THREE.BoxGeometry(.015,.012,.045),ledMat);led.position.set(0,.03,0);wristDev.add(dv,led);
- wristDev.position.copy(wp).add(V3(0,.06,0));tb.WristR.attach(wristDev);
- {const cp=V3();tb.Chest.getWorldPosition(cp);const bp=new THREE.Group();const bag=new THREE.Mesh(new RoundedBox(.28,.32,.11),hoodOut);const strap=new THREE.Mesh(new THREE.BoxGeometry(.29,.035,.115),new THREE.MeshStandardMaterial({color:0x9a0712,roughness:.8}));strap.position.y=.07;bp.add(bag,strap);bag.castShadow=true;bp.position.set(cp.x,cp.y-.1,cp.z+.2);tb.Chest.attach(bp)}
- {const np=V3();tb.Neck.getWorldPosition(np);for(const s of[-1,1]){const p=new THREE.Group();p.position.set(np.x+s*.05,np.y-.04,np.z+.13);const m=new THREE.Mesh(new THREE.CylinderGeometry(.006,.006,.17,5),new THREE.MeshStandardMaterial({color:0xb30d1f,roughness:.6}));m.position.y=-.085;const tip=new THREE.Mesh(new THREE.CylinderGeometry(.009,.009,.025,6),devMat);tip.position.y=-.17;p.add(m,tip);tb.Chest.attach(p);strings.push({p,a:0,v:0,b:0,vb:0})}}
+ // Molusco gancho wrist device + small backpack (identity) on Diesel Mixamo bones
+ const hand=tb['mixamorigRightHand'], chest=tb['mixamorigSpine2'], neck=tb['mixamorigNeck'];
+ if(hand){const wp=V3();hand.getWorldPosition(wp);wristDev=new THREE.Group();const dv=new THREE.Mesh(new THREE.BoxGeometry(.075,.05,.09),devMat);const led=new THREE.Mesh(new THREE.BoxGeometry(.015,.012,.045),ledMat);led.position.set(0,.03,0);wristDev.add(dv,led);
+  wristDev.position.copy(wp);hand.attach(wristDev);wristDev.position.set(0,-.02,.04)}
+ if(chest){const cp=V3();chest.getWorldPosition(cp);const bp=new THREE.Group();const bag=new THREE.Mesh(new RoundedBox(.26,.3,.1),hoodOut);const strap=new THREE.Mesh(new THREE.BoxGeometry(.27,.03,.11),new THREE.MeshStandardMaterial({color:0x9a0712,roughness:.8}));strap.position.y=.06;bp.add(bag,strap);bag.castShadow=true;bp.position.copy(cp);chest.attach(bp);bp.position.set(0,.05,-.14)}
+ if(chest&&neck){const np=V3();neck.getWorldPosition(np);for(const side of[-1,1]){const p=new THREE.Group();p.position.set(side*.05,-.02,.12);const m=new THREE.Mesh(new THREE.CylinderGeometry(.006,.006,.17,5),new THREE.MeshStandardMaterial({color:0xb30d1f,roughness:.6}));m.position.y=-.085;const tip=new THREE.Mesh(new THREE.CylinderGeometry(.009,.009,.025,6),devMat);tip.position.y=-.17;p.add(m,tip);chest.attach(p);strings.push({p,a:0,v:0,b:0,vb:0})}}
  window.__modelLoaded=true;$('start').disabled=false;$('start').textContent='Toque para começar';
-},undefined,e=>{$('start').textContent='Erro ao carregar o corpo';console.error(e)})}
+},undefined,e=>{$('start').textContent='Erro ao carregar o corpo Diesel';console.error(e)})}
 const _rq=new THREE.Quaternion(),_rp=new THREE.Quaternion(),_r1=V3(),_r2=V3(),_r3=V3();
 function retarget(){if(!tgt)return;model.updateMatrixWorld(true);
  for(const [s,t] of RTMAP){const sb=srcB[s],b=tb[t];if(!sb||!b)continue;
   sb.getWorldQuaternion(_rq);_rq.multiply(srcBindInv[s]).multiply(tgtBind[t]);b.parent.getWorldQuaternion(_rp);_rp.invert();b.quaternion.copy(_rp).multiply(_rq);b.updateMatrixWorld(true);
-  if(s==='pelvis'){sb.getWorldPosition(_r1);model.worldToLocal(_r1);_r1.sub(srcBindP.pelvis).add(tgtBindP.Hips);tgt.localToWorld(_r1);b.parent.worldToLocal(_r1);b.position.copy(_r1);b.updateMatrixWorld(true)}
-  const ch=AIMCH[s];if(ch){sb.getWorldPosition(_r2);srcB[ch].getWorldPosition(_r3);_r3.sub(_r2).normalize();const tc=tb[RTMAP.find(x=>x[0]===ch)[1]];aim(b,tc,_r3,1)}}}
+  if(s==='pelvis'){sb.getWorldPosition(_r1);model.worldToLocal(_r1);_r1.sub(srcBindP.pelvis).add(tgtBindP['mixamorigHips']);tgt.localToWorld(_r1);b.parent.worldToLocal(_r1);b.position.copy(_r1);b.updateMatrixWorld(true)}
+  const ch=AIMCH[s];if(ch){sb.getWorldPosition(_r2);srcB[ch].getWorldPosition(_r3);_r3.sub(_r2).normalize();const tc=tb[RTMAP.find(x=>x[0]===ch)[1]];aim(b,tc,_r3,1)}}
+}
 // ---------- State & physics (scratch vectors: no per-frame allocations in hot paths)
 const P=V3(),V=V3(),R=.4,HH=1.8,G=30;
 const _a=V3(),_b=V3(),_c=V3(),_d=V3(),_e=V3(),_f=V3(),_wish=V3(),_fw=V3(),_rt=V3(),_n=V3();
@@ -683,7 +685,7 @@ function onMantle(){animState='climbUp';animClock=0;const a=acts.climbUp;if(a)pl
 function onLand(h){stats.lands++;landInfo=THREE.MathUtils.clamp(h/8,0,1);shake=CFG.fx?Math.min(1,h/14):0;
  if(state==='swing'||state==='climb'||state==='mantle')return;
  const hs=Math.hypot(V.x,V.z);
- if(h>9){animState='roll';animClock=0;stats.rolls++;playOnce('roll',0,1.35);if(hs<6){camFwd(_a);_b.set(Math.sin(heroYaw),0,Math.cos(heroYaw));V.x=_b.x*8;V.z=_b.z*8}}
+ if(h>9){animState='roll';animClock=0;stats.rolls++;if(acts.slide&&hs>7)playOnce('slide',0,1.2);else playOnce('roll',0,1.35);if(hs<6){camFwd(_a);_b.set(Math.sin(heroYaw),0,Math.cos(heroYaw));V.x=_b.x*8;V.z=_b.z*8}}
  else if(h>3){animState='land';animClock=0;playOnce('land',.12,1.5+(1-landInfo)*.6)}
  else if(h>1.2){animState='landS';animClock=0;playOnce('landS',.25,1.9)}
  else animState='loco'}
@@ -736,16 +738,17 @@ function animate(dt){
  if(animState==='land'&&(animClock>(.3+landInfo*.35)||(hs>3&&animClock>.22)))animState='loco';
  if(animState==='landS'&&(animClock>.3||(hs>3&&animClock>.15)))animState='loco';
  if(animState==='climbUp'&&state!=='mantle')animState=grounded?'loco':'air';
- if(animState==='roll'&&animClock>1.46/1.35*.92)animState='loco';
+ if(animState==='roll'&&animClock>(acts.slide&&acts.slide.getEffectiveWeight()>.1?0.85:1.46/1.35*.92))animState='loco';
  if(air&&animState!=='jumpStart')animState=V.y<-14?'fall':'air';
  if(!air&&(animState==='air'||animState==='fall')&&state!=='mantle')animState='loco';
  if(state==='mantle'&&acts.climbUp)animState='climbUp';
- const W={idle:0,walk:0,jog:0,sprint:0,jumpStart:0,air:0,fall:0,land:0,landS:0,roll:0,climbUp:0};
+ const W={idle:0,walk:0,jog:0,sprint:0,jumpStart:0,air:0,fall:0,land:0,landS:0,roll:0,climbUp:0,crouch:0,crouchWalk:0,slide:0,slideLoop:0,slideExit:0};
  if(animState==='loco'||animState==='land'||animState==='landS'){const isL=animState!=='loco',gw=isL?(animState==='land'?Math.max(.1,.6-landInfo*.5):.45):1;
   const wS=THREE.MathUtils.smoothstep(hs,9,12.5),wJ=Math.min(THREE.MathUtils.smoothstep(hs,2.6,5.5),1-wS),wW=Math.min(THREE.MathUtils.smoothstep(hs,.3,2.2),1-wS-wJ);
   W.sprint=wS*gw;W.jog=wJ*gw;W.walk=wW*gw;W.idle=(1-wS-wJ-wW)*gw;if(isL)W[animState]=1-gw}
  else W[animState]=1;
- const k=1-Math.exp(-dt*12);for(const n in W){const a=acts[n];if(a)a.setEffectiveWeight(lerp(a.getEffectiveWeight(),W[n],(animState==='roll'||animState==='climbUp')&&n===animState?Math.max(k,.35):k))}
+ if(animState==='roll'&&acts.slide&&acts.slide.isRunning()&&acts.slide.time>0){W.roll=0;W.slide=1}
+ const k=1-Math.exp(-dt*12);for(const n in W){const a=acts[n];if(a)a.setEffectiveWeight(lerp(a.getEffectiveWeight(),W[n],(animState==='roll'||animState==='climbUp')&&(n===animState||n==='slide')?Math.max(k,.35):k))}
  if(acts.sprint)acts.sprint.timeScale=THREE.MathUtils.clamp(hs/11,.7,1.4);if(acts.jog)acts.jog.timeScale=THREE.MathUtils.clamp(hs/5.5,.6,1.5);if(acts.walk)acts.walk.timeScale=THREE.MathUtils.clamp(hs/1.8,.6,1.5);
  mixer.update(dt);
  // flip: rotate model root around local X (camera unaffected)
@@ -825,7 +828,7 @@ $('start').addEventListener('click',startGame);$('again').addEventListener('clic
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight)});
 
 // ---------- Quality profiles + settings
-const PROF=[{n:'Baixo',pr:1,sh:1024,bl:false,peds:20,cars:10},{n:'Médio',pr:1.5,sh:2048,bl:true,peds:40,cars:18},{n:'Ultra',pr:2,sh:4096,bl:true,peds:72,cars:28}];
+const PROF=[{n:'Baixo',pr:1,sh:1024,bl:false,peds:16,cars:8},{n:'Médio',pr:1.5,sh:2048,bl:true,peds:36,cars:16},{n:'Alto',pr:2.25,sh:2048,bl:true,peds:56,cars:22},{n:'Ultra',pr:Math.min(3,DPR||3),sh:4096,bl:true,peds:72,cars:28}];
 const DIST=[{far:260,fog:[90,250]},{far:480,fog:[160,460]},{far:900,fog:[220,850]}];
 let prScale=1,fAcc=0,fN=0,fpsShown=60,warm=0,lowCount=0;
 function applyQuality(){const p=PROF[CFG.q];const pr=Math.min(DPR,p.pr)*prScale;renderer.setPixelRatio(pr);composer.setPixelRatio(pr);composer.setSize(innerWidth,innerHeight);useBloom=p.bl;
@@ -861,7 +864,7 @@ function frame(now){
  perf._c+=renderer.info.render.calls;perf._cpu+=performance.now()-t0;perf._n++;
  fAcc+=rdt;fN++;warm+=rdt;if(fAcc>1.5){const fps=fN/fAcc;fpsShown=fps;perf.calls=Math.round(perf._c/perf._n);perf.cpuMs=perf._cpu/perf._n;perf.frameMs=1000/fps;perf.tris=renderer.info.render.triangles;perf._c=perf._cpu=perf._n=0;
   $('fps').textContent=`${fps.toFixed(0)} fps · ${perf.frameMs.toFixed(1)} ms · CPU ${perf.cpuMs.toFixed(1)} ms · ${perf.calls} draw calls · ${PROF[CFG.q].n} ×${prScale.toFixed(2)}`;
-  if(+CFG.auto&&warm>3&&!paused){const target=+CFG.cap?27:48;if(fps<target){lowCount++;if(lowCount>=2){lowCount=0;if(prScale>.65){prScale=Math.max(.6,prScale-.15)}else if(CFG.q>0){CFG.q--;prScale=1;applyUI()}applyQuality()}}else lowCount=0}
+  if(+CFG.auto&&warm>3&&!paused){const target=+CFG.cap?27:55;if(fps<target){lowCount++;if(lowCount>=2){lowCount=0;if(prScale>.65){prScale=Math.max(.6,prScale-.15)}else if(CFG.q>0){CFG.q--;prScale=1;applyUI()}applyQuality()}}else lowCount=0}
   fAcc=0;fN=0}
 }
 reset();requestAnimationFrame(frame);
