@@ -1,0 +1,14 @@
+{
+  "source": "https://github.com/Beneking102/bene-proggen-maps",
+  "preset": "METROPOLE",
+  "seed": 1,
+  "radius": 400.0,
+  "block_size": 40.0,
+  "layout_mode": "raster",
+  "buildings": 214,
+  "special": 10,
+  "streets": 845,
+  "blocks": 311,
+  "axis": "blender_to_gltf_yup",
+  "note": "x=bx, y=bz(height), z=-by"
+}
